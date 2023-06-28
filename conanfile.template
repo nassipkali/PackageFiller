@@ -8,8 +8,7 @@ import os
 
 required_conan_version = ">=2.0"
 
-
-class PlatformExceptionsConan(ConanFile):
+class $package_classname
     name = $package_name
     license = $package_license
     homepage = "fill it"
