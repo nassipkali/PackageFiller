@@ -1,8 +1,15 @@
 import os
+import sys
 import yaml
 import hashlib
 import requests
 from string import Template
+
+print(len(sys.argv))
+
+if len(sys.argv) != 2:
+    print("Usage: python main.py <*.yml>")
+    sys.exit(1)
 
 class quoted(str):
     pass
@@ -64,30 +71,31 @@ if not os.path.exists(root_dir):
 else:
     print(f"The directory '{root_dir}' already exists.")
 
+with open(sys.argv[1], "r") as f:
+    config = yaml.safe_load(f)
+
+# Extract values from YAML
+package_name = config.get("package_name")
+package_altname = config.get("cmake_targetname")
+package_version = config.get("package_version")
+package_license = config.get("package_license")
+package_url = config.get("package_url")
+package_simd = config.get("package_simd")
+
 os.chdir("./" + root_dir)
 
-package_name = input("Enter C++ package name: ")
-package_version = input("Enter C++ package version: ")
-package_license = input("Enter C++ package license: ")
-package_url = input("Enter C++ package url: ")
-package_simd = input("Is SIMD used? (yes/no): ")
-
 is_simd = False
-
-if(package_simd == "yes"):
+if package_simd == "yes":
     is_simd = True
 
-package_dependencies = []
-print("Enter C++ package dependencies: ")
-while True:
-    line = input()
-    if not line:
-        break
-    package_dependencies.append(line)
+package_dependencies = config.get("package_dependencies", [])
 
 package_sha256 = calculate_sha256(package_url)
 
-package_altname = package_name.title().replace(".", ".")
+if "." in package_altname:
+    package_classname = "".join(package_altname.split(".")) + "Conan(ConanFile):"
+else:
+    package_classname = package_altname.capitalize() + "Class"
 
 config_data = {
     'versions': {
@@ -140,7 +148,7 @@ with open(conandata_file, 'w') as file:
 
 # Handle dependencies
 package_dependencies = ['self.requires(\'' + item + '\')' for item in package_dependencies]
-indented_strings = [" " * 4 * 3 + s + "\n" for s in package_dependencies]
+indented_strings = [" " * 4 * 2 + s + "\n" for s in package_dependencies]
 result = ''.join(indented_strings)
 
 # Using template for fill conanfile.py
@@ -148,6 +156,7 @@ template = Template(conanfile_template)
 
 filled_template = template.substitute(
         package_name=package_name,
+        package_classname=package_classname,
         package_license=package_license,
         package_altname=package_altname,
         package_dependencies=result
